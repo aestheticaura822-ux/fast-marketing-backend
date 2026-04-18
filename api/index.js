@@ -10,7 +10,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ Vercel ke liye CORS update karo
+// CORS
 app.use(cors({
   origin: ['https://fast-marketing-app.vercel.app', 'http://localhost:5173'],
   credentials: true
@@ -28,6 +28,22 @@ const createTransporter = () => {
       pass: process.env.EMAIL_PASS,
     },
   });
+};
+
+// ============ ADMIN AUTH MIDDLEWARE (DEFINE PEHLE) ============
+const authenticateAdmin = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'No token provided' });
+  }
+  
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+  
+  next();
 };
 
 // ============ CONTACT FORM API ============
@@ -91,7 +107,7 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
-// Blog APIs - Ensure async/await
+// ============ BLOG APIs ============
 app.get('/api/blog/posts', async (req, res) => {
   try {
     const posts = await getAllPosts();
@@ -116,6 +132,7 @@ app.get('/api/blog/posts/:id', async (req, res) => {
   }
 });
 
+// Protected routes (authenticateAdmin ab define ho chuka hai)
 app.post('/api/blog/posts', authenticateAdmin, async (req, res) => {
   try {
     const newPost = await createPost(req.body);
@@ -140,47 +157,17 @@ app.delete('/api/blog/posts/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
-// ============ ADMIN AUTH MIDDLEWARE ============
-const authenticateAdmin = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ success: false, message: 'No token provided' });
-  }
-  
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
-  }
-  
-  next();
-};
-
-app.post('/api/blog/posts', authenticateAdmin, (req, res) => {
-  try {
-    const newPost = createPost(req.body);
-    res.json({ success: true, post: newPost });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to create post' });
-  }
-});
-
-app.delete('/api/blog/posts/:id', authenticateAdmin, (req, res) => {
-  try {
-    const deleted = deletePost(req.params.id);
-    if (deleted) {
-      res.json({ success: true, message: 'Post deleted successfully' });
-    } else {
-      res.status(404).json({ success: false, message: 'Post not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to delete post' });
-  }
-});
-
+// ============ HEALTH CHECK API ============
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// ✅ Vercel Serverless ke liye export
+// ============ START SERVER (Local) ============
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+  });
+}
+
+// ============ VERCEL EXPORT ============
 module.exports = app;
