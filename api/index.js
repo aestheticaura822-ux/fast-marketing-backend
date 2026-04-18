@@ -106,7 +106,10 @@ app.post('/api/admin/login', (req, res) => {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 });
-
+// ============ VERIFY TOKEN API ============
+app.get('/api/admin/verify', authenticateAdmin, (req, res) => {
+  res.json({ success: true, message: 'Token is valid' });
+});
 // ============ BLOG APIs ============
 app.get('/api/blog/posts', async (req, res) => {
   try {
