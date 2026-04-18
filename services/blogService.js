@@ -1,68 +1,60 @@
-const fs = require('fs');
-const path = require('path');
+const { put, list, del, head } = require('@vercel/blob');
 
-const dataPath = path.join(__dirname, '../data/posts.json');
-
-// Ensure data directory exists
-if (!fs.existsSync(path.join(__dirname, '../data'))) {
-  fs.mkdirSync(path.join(__dirname, '../data'));
-}
-
-// Initialize posts.json if not exists
-if (!fs.existsSync(dataPath)) {
-  const initialPosts = [
-    {
-      id: 1,
-      title: "10 Digital Marketing Trends That Will Dominate 2025",
-      excerpt: "From AI-powered personalization to voice search optimization, discover the key trends that will shape the future of digital marketing.",
-      content: "<p>The digital marketing landscape is evolving faster than ever...</p>",
-      category: "Trends",
-      author: "Admin",
-      date: "March 15, 2025",
-      readTime: "8 min read",
-      views: 1240,
-      likes: 89,
-      comments: 23,
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800",
-      featured: true,
-      tags: ["Digital Marketing", "Trends", "AI"],
-      createdAt: new Date().toISOString()
-    }
-  ];
-  fs.writeFileSync(dataPath, JSON.stringify(initialPosts, null, 2));
-}
-
-// Read posts from file
-const readPosts = () => {
-  const data = fs.readFileSync(dataPath);
-  return JSON.parse(data);
-};
-
-// Write posts to file
-const writePosts = (posts) => {
-  fs.writeFileSync(dataPath, JSON.stringify(posts, null, 2));
-};
+const BLOB_KEY = 'blog-posts.json';
 
 // Get all posts
-const getAllPosts = () => {
-  const posts = readPosts();
-  return posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+const getAllPosts = async () => {
+  try {
+    const { blobs } = await list({
+      prefix: BLOB_KEY,
+    });
+    
+    if (blobs.length === 0) {
+      return [];
+    }
+    
+    const blob = blobs[0];
+    const response = await fetch(blob.url);
+    const posts = await response.json();
+    
+    return posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    return [];
+  }
 };
 
-// Get single post
-const getPostById = (id) => {
-  const posts = readPosts();
+// Get single post by ID
+const getPostById = async (id) => {
+  const posts = await getAllPosts();
   const post = posts.find(p => p.id === parseInt(id));
+  
   if (post) {
-    post.views += 1;
-    writePosts(posts);
+    post.views = (post.views || 0) + 1;
+    await savePosts(posts);
   }
+  
   return post;
 };
 
+// Save all posts to blob
+const savePosts = async (posts) => {
+  try {
+    await put(BLOB_KEY, JSON.stringify(posts, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+    });
+    return true;
+  } catch (error) {
+    console.error('Error saving posts:', error);
+    return false;
+  }
+};
+
 // Create new post
-const createPost = (postData) => {
-  const posts = readPosts();
+const createPost = async (postData) => {
+  const posts = await getAllPosts();
+  
   const newId = posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1;
   
   const newPost = {
@@ -72,38 +64,49 @@ const createPost = (postData) => {
     likes: 0,
     comments: 0,
     createdAt: new Date().toISOString(),
-    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    date: new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
   };
   
   posts.push(newPost);
-  writePosts(posts);
+  await savePosts(posts);
   return newPost;
 };
 
-// Update post
-const updatePost = (id, postData) => {
-  const posts = readPosts();
+// Update existing post
+const updatePost = async (id, postData) => {
+  const posts = await getAllPosts();
   const index = posts.findIndex(p => p.id === parseInt(id));
   
   if (index !== -1) {
     posts[index] = { ...posts[index], ...postData };
-    writePosts(posts);
+    await savePosts(posts);
     return posts[index];
   }
+  
   return null;
 };
 
 // Delete post
-const deletePost = (id) => {
-  const posts = readPosts();
-  const index = posts.findIndex(p => p.id === parseInt(id));
+const deletePost = async (id) => {
+  let posts = await getAllPosts();
+  const filteredPosts = posts.filter(p => p.id !== parseInt(id));
   
-  if (index !== -1) {
-    posts.splice(index, 1);
-    writePosts(posts);
+  if (filteredPosts.length !== posts.length) {
+    await savePosts(filteredPosts);
     return true;
   }
+  
   return false;
 };
 
-module.exports = { getAllPosts, getPostById, createPost, updatePost, deletePost };
+module.exports = {
+  getAllPosts,
+  getPostById,
+  createPost,
+  updatePost,
+  deletePost
+};

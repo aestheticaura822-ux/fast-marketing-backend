@@ -91,26 +91,52 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
-// ============ BLOG APIs ============
-app.get('/api/blog/posts', (req, res) => {
+// Blog APIs - Ensure async/await
+app.get('/api/blog/posts', async (req, res) => {
   try {
-    const posts = getAllPosts();
+    const posts = await getAllPosts();
     res.json({ success: true, posts });
   } catch (error) {
+    console.error('Error fetching posts:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch posts' });
   }
 });
 
-app.get('/api/blog/posts/:id', (req, res) => {
+app.get('/api/blog/posts/:id', async (req, res) => {
   try {
-    const post = getPostById(req.params.id);
+    const post = await getPostById(req.params.id);
     if (post) {
       res.json({ success: true, post });
     } else {
       res.status(404).json({ success: false, message: 'Post not found' });
     }
   } catch (error) {
+    console.error('Error fetching post:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch post' });
+  }
+});
+
+app.post('/api/blog/posts', authenticateAdmin, async (req, res) => {
+  try {
+    const newPost = await createPost(req.body);
+    res.json({ success: true, post: newPost });
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({ success: false, message: 'Failed to create post' });
+  }
+});
+
+app.delete('/api/blog/posts/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await deletePost(req.params.id);
+    if (deleted) {
+      res.json({ success: true, message: 'Post deleted successfully' });
+    } else {
+      res.status(404).json({ success: false, message: 'Post not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete post' });
   }
 });
 
