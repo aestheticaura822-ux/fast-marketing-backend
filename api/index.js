@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000;
 
 // ✅ Vercel ke liye CORS update karo
 app.use(cors({
-  origin: ['https://your-frontend.vercel.app', 'http://localhost:5173'],
+  origin: ['https://fast-marketing-app.vercel.app', 'http://localhost:5173'],
   credentials: true
 }));
 app.use(express.json());
