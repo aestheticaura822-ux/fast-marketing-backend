@@ -8,6 +8,7 @@ const { verifyPassword, generateToken, verifyToken } = require('../services/auth
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 // ✅ CORS - Pehle
 app.use(cors({
@@ -28,6 +29,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============ EMAIL TRANSPORTER CONFIGURATION ============
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT),
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
 
 // ============ ADMIN AUTH MIDDLEWARE (DEFINE PEHLE) ============
 const authenticateAdmin = (req, res, next) => {
@@ -101,7 +114,10 @@ app.post('/api/contact', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Email error:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to send message' });
+    res.status(500).json({ 
+      success: false, 
+      message: `Failed to send message: ${error.message}` 
+    });
   }
 });
 
@@ -116,10 +132,12 @@ app.post('/api/admin/login', (req, res) => {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 });
+
 // ============ VERIFY TOKEN API ============
 app.get('/api/admin/verify', authenticateAdmin, (req, res) => {
   res.json({ success: true, message: 'Token is valid' });
 });
+
 // ============ BLOG APIs ============
 app.get('/api/blog/posts', async (req, res) => {
   try {
