@@ -40,13 +40,15 @@ const getPostById = async (id) => {
 // Save all posts to blob
 const savePosts = async (posts) => {
   try {
-    await put(BLOB_KEY, JSON.stringify(posts, null, 2), {
+    const result = await put(BLOB_KEY, JSON.stringify(posts, null, 2), {
       access: 'public',
       addRandomSuffix: false,
+      allowOverwrite: true,  // ✅ Yeh important hai!
     });
+    console.log('✅ Blob save successful');
     return true;
   } catch (error) {
-    console.error('Error saving posts:', error);
+    console.error('❌ Error saving posts:', error.message);
     return false;
   }
 };
@@ -72,7 +74,10 @@ const createPost = async (postData) => {
   };
   
   posts.push(newPost);
-  await savePosts(posts);
+  const saved = await savePosts(posts);
+  if (!saved) {
+    throw new Error('Failed to save post');
+  }
   return newPost;
 };
 
