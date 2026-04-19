@@ -8,39 +8,26 @@ const { verifyPassword, generateToken, verifyToken } = require('../services/auth
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = [
-  'https://fast-marketing-app.vercel.app',
-  'http://localhost:5173',
-  'https://fast-marketing-app.vercel.app'
-];
-
+// ✅ CORS - Pehle
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ['https://fast-marketing-app.vercel.app', 'http://localhost:5173'],
+  credentials: true
 }));
 
-// ============ EMAIL TRANSPORTER CONFIGURATION ============
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT),
-    secure: false,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-};
+// ✅ Body Parser - CORS ke baad, routes se pehle
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ✅ Debug middleware - Check if body is received
+app.use((req, res, next) => {
+  console.log(`📡 ${req.method} ${req.url}`);
+  if (req.method === 'POST') {
+    console.log('📦 Request body:', req.body);
+  }
+  next();
+});
+
 
 // ============ ADMIN AUTH MIDDLEWARE (DEFINE PEHLE) ============
 const authenticateAdmin = (req, res, next) => {
@@ -60,6 +47,17 @@ const authenticateAdmin = (req, res, next) => {
 
 // ============ CONTACT FORM API ============
 app.post('/api/contact', async (req, res) => {
+  console.log('📬 Contact API called');
+  console.log('📦 Received body:', req.body);
+  
+  // ✅ Check if body exists
+  if (!req.body) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Request body is missing' 
+    });
+  }
+  
   const { name, email, phone, service, message } = req.body;
   
   console.log('📬 Contact Form Submission:', { name, email, phone, service, message });
