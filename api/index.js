@@ -10,12 +10,24 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS
+const allowedOrigins = [
+  'https://fast-marketing-app.vercel.app',
+  'http://localhost:5173',
+  'https://fast-marketing-app.vercel.app'
+];
+
 app.use(cors({
-  origin: ['https://fast-marketing-app.vercel.app', 'http://localhost:5173'],
-  credentials: true
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
 
 // ============ EMAIL TRANSPORTER CONFIGURATION ============
 const createTransporter = () => {
